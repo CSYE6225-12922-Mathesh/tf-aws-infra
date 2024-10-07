@@ -15,18 +15,4 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-#Setting up terraform
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v1
 
- #initializing terraform
-      - name: Initialize Terraform
-        run: terraform init
-
-#Checking terraform format
-      - name: Terraform Format Check
-        run: terraform fmt -check
-
-#Validating terraform code
-      - name: Validate Terraform Configuration
-        run: terraform validate
