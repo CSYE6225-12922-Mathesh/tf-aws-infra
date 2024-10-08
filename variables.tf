@@ -24,3 +24,8 @@ variable "availability_zones" {
   type        = list(string)
   default     = ["us-east-1a", "us-east-1b", "us-east-1c","us-east-1d", "us-east-1e", "us-east-1f"]
 }
+
+variable "cidr_block"{
+    description = "CIDR block for internet gateway"
+    default     = "0.0.0.0/0"
+}
