@@ -3,6 +3,13 @@ variable "vpc_cidr" {
   default     = "10.0.0.0/16"
 }
 
+variable "environment" {
+  description = "Environment name to uniquely identify resources"
+  type        = string
+  default     = "dev"
+}
+
+
 variable "vpc_name" {
   description = "Name for the VPC"
   type        = string
