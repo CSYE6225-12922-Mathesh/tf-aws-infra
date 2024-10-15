@@ -76,47 +76,40 @@ resource "aws_security_group" "app_sg" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = var.cidr_block
-  }
-  ingress {
+    cidr_blocks = ["0.0.0.0/0"]
+    }
+    ingress {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = var.cidr_block
-  }
-  ingress {
+    cidr_blocks = var.cidr_blocks
+    }
+    ingress {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
-    cidr_blocks = var.cidr_block
+    cidr_blocks = var.cidr_blocks
   }
 
   ingress {
-    from_port   = var.application_port # Custom port for your application
+    from_port   = var.application_port 
     to_port     = var.application_port
     protocol    = "tcp"
-    cidr_blocks = var.cidr_block
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = var.cidr_block
+    cidr_blocks = var.cidr_blocks
   }
 
   tags = {
     Name = "${var.environment}-${var.vpc_name}-app-sg"
   }
 }
-resource "aws_instance" "Webapp_Instance" {
-  ami                    = var.ami_id
-  instance_type          = var.instance_type
-  key_name               = var.key_name
-  vpc_security_group_ids = [aws_security_group.app_sg.id]
-  subnet_id              = aws_subnet.public[0].id
+  resource "aws_instance" "Webapp_Instance" {
+    ami                   = var.ami_id
+    instance_type          = var.instance_type
+    key_name              = var.key_name
+    vpc_security_group_ids = [aws_security_group.app_sg.id]
+    subnet_id = aws_subnet.public[0].id
 
-  root_block_device {
+    root_block_device {
     volume_size           = 25
     volume_type           = "gp2"
     delete_on_termination = true
@@ -125,10 +118,10 @@ resource "aws_instance" "Webapp_Instance" {
   ebs_optimized = true
 
   tags = {
-    Name = "${var.environment}-Webapp-instance"
+    Name = "${var.environment}-webapp-instance"
   }
 }
+    
 
 
-
-
+  

@@ -59,3 +59,8 @@ variable "key_name" {
   description = "Name of the key pair for EC2 instances"
 }
 
+variable "cidr_blocks" {
+  description = "CIDR blocks for ingress"
+  type        = list(string)
+  default     = ["0.0.0.0/0"] 
+}
