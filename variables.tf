@@ -40,3 +40,22 @@ variable "cidr_block" {
   description = "CIDR block for internet gateway"
   default     = "0.0.0.0/0"
 }
+
+variable "application_port" {
+  description = "Application port"
+  default     = 8082
+}
+
+variable "ami_id" {
+  description = "AMI ID for EC2 instances"
+}
+
+variable "instance_type" {
+  description = "Instance type for EC2 instances"
+  default     = "t2.micro"
+}
+
+variable "key_name" {
+  description = "Name of the key pair for EC2 instances"
+}
+
