@@ -77,14 +77,14 @@ resource "aws_security_group" "app_sg" {
     to_port     = 22
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
-    }
-    ingress {
+  }
+  ingress {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
     cidr_blocks = var.cidr_blocks
-    }
-    ingress {
+  }
+  ingress {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
@@ -92,7 +92,7 @@ resource "aws_security_group" "app_sg" {
   }
 
   ingress {
-    from_port   = var.application_port 
+    from_port   = var.application_port
     to_port     = var.application_port
     protocol    = "tcp"
     cidr_blocks = var.cidr_blocks
@@ -102,14 +102,14 @@ resource "aws_security_group" "app_sg" {
     Name = "${var.environment}-${var.vpc_name}-app-sg"
   }
 }
-  resource "aws_instance" "Webapp_Instance" {
-    ami                   = var.ami_id
-    instance_type          = var.instance_type
-    key_name              = var.key_name
-    vpc_security_group_ids = [aws_security_group.app_sg.id]
-    subnet_id = aws_subnet.public[0].id
+resource "aws_instance" "Webapp_Instance" {
+  ami                    = var.ami_id
+  instance_type          = var.instance_type
+  key_name               = var.key_name
+  vpc_security_group_ids = [aws_security_group.app_sg.id]
+  subnet_id              = aws_subnet.public[0].id
 
-    root_block_device {
+  root_block_device {
     volume_size           = 25
     volume_type           = "gp2"
     delete_on_termination = true
@@ -121,7 +121,7 @@ resource "aws_security_group" "app_sg" {
     Name = "${var.environment}-webapp-instance"
   }
 }
-    
 
 
-  
+
+
