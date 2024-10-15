@@ -66,3 +66,69 @@ resource "aws_route_table_association" "private" {
   subnet_id      = aws_subnet.private[count.index].id
   route_table_id = aws_route_table.private.id
 }
+
+resource "aws_security_group" "app_sg" {
+  name        = "${var.environment}-${var.vpc_name}-app-sg"
+  description = "App Security Group"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = var.cidr_block
+  }
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = var.cidr_block
+  }
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = var.cidr_block
+  }
+
+  ingress {
+    from_port   = var.application_port # Custom port for your application
+    to_port     = var.application_port
+    protocol    = "tcp"
+    cidr_blocks = var.cidr_block
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = var.cidr_block
+  }
+
+  tags = {
+    Name = "${var.environment}-${var.vpc_name}-app-sg"
+  }
+}
+resource "aws_instance" "Webapp_Instance" {
+  ami                    = var.ami_id
+  instance_type          = var.instance_type
+  key_name               = var.key_name
+  vpc_security_group_ids = [aws_security_group.app_sg.id]
+  subnet_id              = aws_subnet.public[0].id
+
+  root_block_device {
+    volume_size           = 25
+    volume_type           = "gp2"
+    delete_on_termination = true
+  }
+
+  ebs_optimized = true
+
+  tags = {
+    Name = "${var.environment}-Webapp-instance"
+  }
+}
+
+
+
+
