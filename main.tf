@@ -76,33 +76,26 @@ resource "aws_security_group" "app_sg" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = var.cidr_block
+    cidr_blocks = ["0.0.0.0/0"]
   }
   ingress {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = var.cidr_block
+    cidr_blocks = var.cidr_blocks
   }
   ingress {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
-    cidr_blocks = var.cidr_block
+    cidr_blocks = var.cidr_blocks
   }
 
   ingress {
-    from_port   = var.application_port # Custom port for your application
+    from_port   = var.application_port
     to_port     = var.application_port
     protocol    = "tcp"
-    cidr_blocks = var.cidr_block
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = var.cidr_block
+    cidr_blocks = var.cidr_blocks
   }
 
   tags = {
@@ -125,7 +118,7 @@ resource "aws_instance" "Webapp_Instance" {
   ebs_optimized = true
 
   tags = {
-    Name = "${var.environment}-Webapp-instance"
+    Name = "${var.environment}-webapp-instance"
   }
 }
 
