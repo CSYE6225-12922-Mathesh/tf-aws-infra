@@ -118,7 +118,7 @@ resource "aws_instance" "Webapp_Instance" {
   ebs_optimized = true
 
   tags = {
-    Name = "${var.environment}-webapp-instance"
+    Name = "${var.environment}-webapp-instance "
   }
 }
 
