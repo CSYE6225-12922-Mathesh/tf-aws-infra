@@ -102,8 +102,8 @@ resource "aws_security_group" "app_sg" {
     Name = "${var.environment}-${var.vpc_name}-app-sg"
   }
 }
-resource "aws_instance" "Webapp_Instance" {
-  ami = var.ami_id
+resource "aws_in" "Webapp_Instance" {
+  ami                    = var.ami_id
   instance_type          = var.instance_type
   key_name               = var.key_name
   vpc_security_group_ids = [aws_security_group.app_sg.id]
@@ -118,7 +118,7 @@ resource "aws_instance" "Webapp_Instance" {
   ebs_optimized = true
 
   tags = {
-    Name = "${var.environment}-webapp-instance "
+    Name = "${var.environment}-webapp-instance"
   }
 }
 
