@@ -103,7 +103,7 @@ resource "aws_security_group" "app_sg" {
   }
 }
 resource "aws_instance" "Webapp_Instance" {
-  ami                    = var.ami_id
+  ami = var.ami_id
   instance_type          = var.instance_type
   key_name               = var.key_name
   vpc_security_group_ids = [aws_security_group.app_sg.id]
