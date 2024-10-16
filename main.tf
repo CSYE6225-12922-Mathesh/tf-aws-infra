@@ -102,7 +102,7 @@ resource "aws_security_group" "app_sg" {
     Name = "${var.environment}-${var.vpc_name}-app-sg"
   }
 }
-resource "aws_in" "Webapp_Instance" {
+resource "aws_instance" "Webapp_Instance" {
   ami                    = var.ami_id
   instance_type          = var.instance_type
   key_name               = var.key_name
