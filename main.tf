@@ -68,7 +68,7 @@ resource "aws_route_table_association" "private" {
 }
 
 resource "aws_security_group" "app_sg" {
-  name        = "${var.environment}-${var.vpc_name}-app-sg"
+  name        = "application security group"
   description = "App Security Group"
   vpc_id      = aws_vpc.main.id
 
@@ -99,7 +99,7 @@ resource "aws_security_group" "app_sg" {
   }
 
   tags = {
-    Name = "${var.environment}-${var.vpc_name}-app-sg"
+    Name = "application security group"
   }
 }
 resource "aws_instance" "Webapp_Instance" {
