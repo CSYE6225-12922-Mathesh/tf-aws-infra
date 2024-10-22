@@ -98,10 +98,77 @@ resource "aws_security_group" "app_sg" {
     cidr_blocks = var.cidr_blocks
   }
 
+  # egress {
+  #   from_port   = 5432
+  #   to_port     = 5432
+  #   protocol    = "tcp"
+  #   security_groups = [aws_security_group.database_sg.id]
+  # }
+
   tags = {
     Name = "application security group"
   }
 }
+
+
+//a05
+resource "aws_security_group" "database_sg" {
+  name        = "database security group"
+  description = "Database Security Group "
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.app_sg.id]
+
+  }
+}
+
+resource "aws_security_group_rule" "app_to_db" {
+  type                     = "egress"
+  from_port                = 5432
+  to_port                  = 5432
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.app_sg.id
+  source_security_group_id = aws_security_group.database_sg.id
+}
+
+resource "aws_db_parameter_group" "postgresql_param_group" {
+  name        = "csye6225-postgresql-params"
+  family      = "postgres16"
+  description = "Custom parameter group for PostgreSQL 12"
+
+}
+
+resource "aws_db_subnet_group" "rds_subnet" {
+  name        = "csye6225-rds-subnet-group"
+  description = "Subnet group for RDS instances"
+  subnet_ids  = aws_subnet.private[*].id
+
+  tags = {
+    Name = "csye6225-rds-subnet-group"
+  }
+}
+
+
+resource "aws_db_instance" "db_instance" {
+  identifier             = "csye6225"
+  engine                 = "postgres"
+  instance_class         = "db.t3.micro"
+  allocated_storage      = 20
+  db_subnet_group_name   = aws_db_subnet_group.rds_subnet.name
+  vpc_security_group_ids = [aws_security_group.database_sg.id]
+  parameter_group_name   = aws_db_parameter_group.postgresql_param_group.name
+  publicly_accessible    = false
+  multi_az               = false
+  db_name                = "csye6225"
+  username               = "csye6225"
+  password               = "dbpassword1234"
+  skip_final_snapshot    = true
+}
+
 resource "aws_instance" "Webapp_Instance" {
   ami                     = var.ami_id
   instance_type           = var.instance_type
@@ -109,7 +176,6 @@ resource "aws_instance" "Webapp_Instance" {
   vpc_security_group_ids  = [aws_security_group.app_sg.id]
   subnet_id               = aws_subnet.public[0].id
   disable_api_termination = false
-
 
   root_block_device {
     volume_size           = 25
@@ -119,10 +185,53 @@ resource "aws_instance" "Webapp_Instance" {
 
   ebs_optimized = true
 
+  user_data = <<-EOF
+    #!/bin/bash
+    set -e
+
+    # Database configuration passed via Terraform variables
+    DB_HOST="${aws_db_instance.db_instance.address}" 
+    DB_PORT="5432" 
+    DB_NAME="${var.database_name}"
+    DB_USERNAME="${var.database_username}"
+    DB_PASSWORD="${var.database_password}"
+
+
+    if [ -f /home/csye6225/app/.env ]; then
+      echo ".env file created successfully"
+    else
+      echo "Error: .env file not created!"
+      exit 1
+    fi
+    
+    # Update the .env file for the web application
+    cat > /home/csye6225/app/.env <<EOF2
+    PORT=8082
+    DB_HOST=$DB_HOST
+    DB_PORT=$DB_PORT
+    DB_NAME=$DB_NAME
+    DB_USERNAME=$DB_USERNAME
+    DB_PASSWORD=$DB_PASSWORD
+    EOF2
+    # Set correct permissions for .env file
+    chown csye6225:csye6225 /home/csye6225/app/.env
+    chmod 600 /home/csye6225/app/.env
+
+    # Reload systemd to pick up changes
+    systemctl daemon-reload
+
+    # Restart the web application service to load the updated environment variables
+    systemctl restart webapp.service
+  EOF
+
   tags = {
     Name = "${var.environment}-webapp-instance"
   }
 }
+
+
+
+
 
 
 

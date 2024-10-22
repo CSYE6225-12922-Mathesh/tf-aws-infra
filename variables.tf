@@ -64,3 +64,22 @@ variable "cidr_blocks" {
   type        = list(string)
   default     = ["0.0.0.0/0"]
 }
+
+
+variable "database_name" {
+  description = "Name for the DB"
+  type        = string
+
+}
+
+variable "database_username" {
+  description = "Username for the DB"
+  type        = string
+}
+
+variable "database_password" {
+  description = "Password for the DB"
+  type        = string
+}
+
+
