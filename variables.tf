@@ -69,7 +69,7 @@ variable "cidr_blocks" {
 variable "database_name" {
   description = "Name for the DB"
   type        = string
-  
+
 }
 
 variable "database_username" {
