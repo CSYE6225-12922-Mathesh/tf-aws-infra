@@ -163,9 +163,9 @@ resource "aws_db_instance" "db_instance" {
   parameter_group_name   = aws_db_parameter_group.postgresql_param_group.name
   publicly_accessible    = false
   multi_az               = false
-  db_name                = "csye6225"
-  username               = "csye6225"
-  password               = "dbpassword1234"
+  db_name                = var.database_name
+  username               = var.database_username
+  password               = var.database_password
   skip_final_snapshot    = true
 }
 
