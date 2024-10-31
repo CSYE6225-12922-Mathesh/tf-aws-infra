@@ -82,4 +82,19 @@ variable "database_password" {
   type        = string
 }
 
+variable "SENDGRID_API_KEY" {
+  description = "Sendgrid API Key"
+  type        = string
+}
+
+# variable "aws_access_key_demo" {
+#   description = "AWS Access Key for the demo account"
+#   type        = string
+# }
+
+# variable "aws_secret_access_key_demo" {
+#   description = "AWS Secret Key for the demo account"
+#   type        = string
+# }
+
 
