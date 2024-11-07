@@ -87,6 +87,21 @@ variable "SENDGRID_API_KEY" {
   type        = string
 }
 
+variable "down_threshold" {
+  description = "Down threshold for the load balancer"
+  type        = string
+  default     = "6"
+}
+
+variable "up_threshold" {
+  description = "Down threshold for the load balancer"
+  type        = string
+  default     = "6.5"
+}
+#   description = "AWS Access Key for the production account"
+#   type        = string
+# }
+
 # variable "aws_access_key_demo" {
 #   description = "AWS Access Key for the demo account"
 #   type        = string
