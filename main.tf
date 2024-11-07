@@ -78,24 +78,24 @@ resource "aws_security_group" "app_sg" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = var.cidr_blocks
-  }
-  ingress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = var.cidr_blocks
-  }
+  # ingress {
+  #   from_port   = 80
+  #   to_port     = 80
+  #   protocol    = "tcp"
+  #   cidr_blocks = var.cidr_blocks
+  # }
+  # ingress {
+  #   from_port   = 443
+  #   to_port     = 443
+  #   protocol    = "tcp"
+  #   cidr_blocks = var.cidr_blocks
+  # }
 
   ingress {
-    from_port   = var.application_port
-    to_port     = var.application_port
-    protocol    = "tcp"
-    cidr_blocks = var.cidr_blocks
+    from_port       = var.application_port
+    to_port         = var.application_port
+    protocol        = "tcp"
+    security_groups = [aws_security_group.load_balancer_sg.id] // Only allow from Load Balancer
   }
 
   egress {
@@ -228,68 +228,68 @@ resource "aws_iam_instance_profile" "cloudwatch_agent_instance_profile" {
 }
 
 
-resource "aws_instance" "Webapp_Instance" {
-  ami                     = var.ami_id
-  instance_type           = var.instance_type
-  key_name                = var.key_name
-  vpc_security_group_ids  = [aws_security_group.app_sg.id]
-  subnet_id               = aws_subnet.public[0].id
-  disable_api_termination = false
-  iam_instance_profile    = aws_iam_instance_profile.cloudwatch_agent_instance_profile.name
+# resource "aws_instance" "Webapp_Instance" {
+#   ami                     = var.ami_id
+#   instance_type           = var.instance_type
+#   key_name                = var.key_name
+#   vpc_security_group_ids  = [aws_security_group.app_sg.id]
+#   subnet_id               = aws_subnet.public[0].id
+#   disable_api_termination = false
+#   iam_instance_profile    = aws_iam_instance_profile.cloudwatch_agent_instance_profile.name
 
-  root_block_device {
-    volume_size           = 25
-    volume_type           = "gp2"
-    delete_on_termination = true
-  }
+#   root_block_device {
+#     volume_size           = 25
+#     volume_type           = "gp2"
+#     delete_on_termination = true
+#   }
 
-  ebs_optimized = true
-  user_data     = <<-EOF
-    #!/bin/bash
-    set -e
+#   ebs_optimized = true
+#   user_data     = <<-EOF
+#     #!/bin/bash
+#     set -e
 
-    # Database and S3 configuration
-    DB_HOST="${aws_db_instance.db_instance.address}"
-    DB_PORT="5432"
-    DB_NAME="${var.database_name}"
-    DB_USERNAME="${var.database_username}"
-    DB_PASSWORD="${var.database_password}"
-    S3_BUCKET_NAME="${aws_s3_bucket.web-bucket.bucket}"
-    AWS_REGION="${var.aws_region}"
-    SENDGRID_API_KEY="${var.SENDGRID_API_KEY}"
+#     # Database and S3 configuration
+#     DB_HOST="${aws_db_instance.db_instance.address}"
+#     DB_PORT="5432"
+#     DB_NAME="${var.database_name}"
+#     DB_USERNAME="${var.database_username}"
+#     DB_PASSWORD="${var.database_password}"
+#     S3_BUCKET_NAME="${aws_s3_bucket.web-bucket.bucket}"
+#     AWS_REGION="${var.aws_region}"
+#     SENDGRID_API_KEY="${var.SENDGRID_API_KEY}"
 
-    # Create .env file for the application
-    cat > /home/csye6225/app/.env <<EOL
-    PORT=8082
-    DB_HOST=$DB_HOST
-    DB_PORT=$DB_PORT
-    DB_NAME=$DB_NAME
-    DB_USERNAME=$DB_USERNAME
-    DB_PASSWORD=$DB_PASSWORD
-    S3_BUCKET_NAME=$S3_BUCKET_NAME
-    AWS_REGION=$AWS_REGION
-    SENDGRID_API_KEY=$SENDGRID_API_KEY
-    EOL
+#     # Create .env file for the application
+#     cat > /home/csye6225/app/.env <<EOL
+#     PORT=8082
+#     DB_HOST=$DB_HOST
+#     DB_PORT=$DB_PORT
+#     DB_NAME=$DB_NAME
+#     DB_USERNAME=$DB_USERNAME
+#     DB_PASSWORD=$DB_PASSWORD
+#     S3_BUCKET_NAME=$S3_BUCKET_NAME
+#     AWS_REGION=$AWS_REGION
+#     SENDGRID_API_KEY=$SENDGRID_API_KEY
+#     EOL
 
-    chown csye6225:csye6225 /home/csye6225/app/.env
-    chmod 600 /home/csye6225/app/.env
+#     chown csye6225:csye6225 /home/csye6225/app/.env
+#     chmod 600 /home/csye6225/app/.env
 
-    # sudo mkdir -p /home/csye6225/app/logs
-    # sudo chown -R csye6225:csye6225 /home/csye6225/app/logs
-
-    
-    sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
-   
-    sudo systemctl daemon-reload
-    sudo systemctl restart webapp.service
+#     # sudo mkdir -p /home/csye6225/app/logs
+#     # sudo chown -R csye6225:csye6225 /home/csye6225/app/logs
 
 
-    EOF
+#     sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
 
-  tags = {
-    Name = "${var.environment}-webapp-instance"
-  }
-}
+#     sudo systemctl daemon-reload
+#     sudo systemctl restart webapp.service
+
+
+#     EOF
+
+#   tags = {
+#     Name = "${var.environment}-webapp-instance"
+#   }
+# }
 
 resource "aws_s3_bucket" "web-bucket" {
   bucket = random_uuid.web_bucket.result
@@ -332,14 +332,6 @@ resource "aws_s3_bucket_lifecycle_configuration" "web_bucket_lifecycle" {
   }
 }
 
-# resource "aws_route53_record" "app_a_record" {
-#   zone_id = aws_route53_zone.cloudwebapp.zone_id
-#   name    = "cloudwebapp.me" 
-#   type    = "A"
-#   ttl     = 300
-#   records = [aws_instance.Webapp_Instance.public_ip] 
-
-# }
 
 data "aws_route53_zone" "cloudwebapp" {
   name         = "demo.cloudwebapp.me"
@@ -347,22 +339,245 @@ data "aws_route53_zone" "cloudwebapp" {
 }
 
 
-# resource "aws_route53_record" "dev_a_record" {
+# resource "aws_route53_record" "demo_a_record" {
 #   zone_id = data.aws_route53_zone.cloudwebapp.zone_id
-#   name    = "dev.cloudwebapp.me"
+#   name    = "demo.cloudwebapp.me"
 #   type    = "A"
 #   ttl     = 300
 #   records = [aws_instance.Webapp_Instance.public_ip]
 # }
 
 
-resource "aws_route53_record" "demo_a_record" {
+
+resource "aws_security_group" "load_balancer_sg" {
+  name        = "Load Balancer sg"
+  description = "Security group for Load Balancer"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "LoadBalancerSecurityGroup"
+  }
+}
+
+resource "aws_launch_template" "web_app_template" {
+  name_prefix   = "csye6225_asg"
+  image_id      = var.ami_id
+  instance_type = var.instance_type
+  key_name      = var.key_name
+  ebs_optimized = true
+  block_device_mappings {
+    device_name = "/dev/xvda"
+    ebs {
+      volume_size           = 25
+      volume_type           = "gp2"
+      delete_on_termination = true
+    }
+  }
+  iam_instance_profile {
+    name = aws_iam_instance_profile.cloudwatch_agent_instance_profile.name # Removed quotes
+  }
+
+  network_interfaces {
+    associate_public_ip_address = true
+    security_groups             = [aws_security_group.app_sg.id]
+  }
+
+  user_data = base64encode(<<-EOF
+    #!/bin/bash
+    set -e
+
+    # Database and S3 configuration
+    DB_HOST="${aws_db_instance.db_instance.address}"
+    DB_PORT="5432"
+    DB_NAME="${var.database_name}"
+    DB_USERNAME="${var.database_username}"
+    DB_PASSWORD="${var.database_password}"
+    S3_BUCKET_NAME="${aws_s3_bucket.web-bucket.bucket}"
+    AWS_REGION="${var.aws_region}"
+    SENDGRID_API_KEY="${var.SENDGRID_API_KEY}"
+
+    # Create .env file for the application
+    cat > /home/csye6225/app/.env <<EOL
+    PORT=8082
+    DB_HOST=$DB_HOST
+    DB_PORT=$DB_PORT
+    DB_NAME=$DB_NAME
+    DB_USERNAME=$DB_USERNAME
+    DB_PASSWORD=$DB_PASSWORD
+    S3_BUCKET_NAME=$S3_BUCKET_NAME
+    AWS_REGION=$AWS_REGION
+    SENDGRID_API_KEY=$SENDGRID_API_KEY
+    EOL
+
+    chown csye6225:csye6225 /home/csye6225/app/.env
+    chmod 600 /home/csye6225/app/.env
+
+    # sudo mkdir -p /home/csye6225/app/logs
+    # sudo chown -R csye6225:csye6225 /home/csye6225/app/logs
+
+    
+    sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
+   
+    sudo systemctl daemon-reload
+    sudo systemctl restart webapp.service
+
+
+    EOF
+  )
+}
+
+resource "aws_autoscaling_group" "web_app_asg" {
+  launch_template {
+    id      = aws_launch_template.web_app_template.id
+    version = "$Latest"
+  }
+
+  min_size            = 3
+  max_size            = 5
+  desired_capacity    = 3
+  vpc_zone_identifier = aws_subnet.public[*].id
+  target_group_arns   = [aws_lb_target_group.app_target_group.arn]
+  tag {
+    key                 = "Name"
+    value               = "WebAppInstance"
+    propagate_at_launch = true
+  }
+
+}
+
+
+# CloudWatch Alarm for Scale Up
+resource "aws_cloudwatch_metric_alarm" "cpu_scale_up" {
+  alarm_name          = "cpu-scale-up-alarm"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "1"
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/EC2"
+  period              = "60"
+  statistic           = "Average"
+  threshold           = "6.5" # Scale up if CPU usage is above 5%
+  alarm_description   = "Alarm when CPU exceeds 5%"
+  dimensions = {
+    AutoScalingGroupName = aws_autoscaling_group.web_app_asg.name
+  }
+
+  alarm_actions = [
+    aws_autoscaling_policy.scale_up.arn # Action to perform on alarm
+  ]
+}
+
+# CloudWatch Alarm for Scale Down
+resource "aws_cloudwatch_metric_alarm" "cpu_scale_down" {
+  alarm_name          = "cpu-scale-down-alarm"
+  comparison_operator = "LessThanThreshold"
+  evaluation_periods  = "1"
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/EC2"
+  period              = "60"
+  statistic           = "Average"
+  threshold           = "6" # Scale down if CPU usage is below 3%
+  alarm_description   = "Alarm when CPU drops below 3%"
+  dimensions = {
+    AutoScalingGroupName = aws_autoscaling_group.web_app_asg.name
+  }
+
+  alarm_actions = [
+    aws_autoscaling_policy.scale_down.arn
+  ]
+}
+
+# Scale Up Policy
+resource "aws_autoscaling_policy" "scale_up" {
+  name                   = "scale_up"
+  scaling_adjustment     = 1 # Increment by 1 instance
+  adjustment_type        = "ChangeInCapacity"
+  cooldown               = 60
+  autoscaling_group_name = aws_autoscaling_group.web_app_asg.name
+}
+
+# Scale Down Policy
+resource "aws_autoscaling_policy" "scale_down" {
+  name                   = "scale_down"
+  scaling_adjustment     = -1 # Decrement by 1 instance
+  adjustment_type        = "ChangeInCapacity"
+  cooldown               = 60
+  autoscaling_group_name = aws_autoscaling_group.web_app_asg.name
+}
+
+resource "aws_lb" "app_lb" {
+  name               = "my-app-lb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.load_balancer_sg.id]
+  subnets            = aws_subnet.public[*].id
+
+  enable_deletion_protection = false
+
+  tags = {
+    Name = "MyAppLoadBalancer"
+  }
+}
+
+resource "aws_lb_listener" "http" {
+  load_balancer_arn = aws_lb.app_lb.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.app_target_group.arn
+  }
+}
+
+resource "aws_lb_target_group" "app_target_group" {
+  name     = "my-app-target-group"
+  port     = var.application_port
+  protocol = "HTTP"
+  vpc_id   = aws_vpc.main.id
+
+  health_check {
+    path                = "/healthz"
+    interval            = 30
+    timeout             = 10
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+  }
+}
+
+resource "aws_route53_record" "alias" {
   zone_id = data.aws_route53_zone.cloudwebapp.zone_id
   name    = "demo.cloudwebapp.me"
   type    = "A"
-  ttl     = 300
-  records = [aws_instance.Webapp_Instance.public_ip]
+  alias {
+    name                   = aws_lb.app_lb.dns_name
+    zone_id                = aws_lb.app_lb.zone_id
+    evaluate_target_health = true
+  }
 }
+
+
+
 
 
 
