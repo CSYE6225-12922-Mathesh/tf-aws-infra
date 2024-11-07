@@ -476,14 +476,14 @@ resource "aws_cloudwatch_metric_alarm" "cpu_scale_up" {
   namespace           = "AWS/EC2"
   period              = "60"
   statistic           = "Average"
-  threshold           = "6.5" # Scale up if CPU usage is above 5%
+  threshold           = var.up_threshold 
   alarm_description   = "Alarm when CPU exceeds 5%"
   dimensions = {
     AutoScalingGroupName = aws_autoscaling_group.web_app_asg.name
   }
 
   alarm_actions = [
-    aws_autoscaling_policy.scale_up.arn # Action to perform on alarm
+    aws_autoscaling_policy.scale_up.arn 
   ]
 }
 
@@ -496,7 +496,7 @@ resource "aws_cloudwatch_metric_alarm" "cpu_scale_down" {
   namespace           = "AWS/EC2"
   period              = "60"
   statistic           = "Average"
-  threshold           = "6" # Scale down if CPU usage is below 3%
+  threshold           = var.down_threshold 
   alarm_description   = "Alarm when CPU drops below 3%"
   dimensions = {
     AutoScalingGroupName = aws_autoscaling_group.web_app_asg.name
@@ -510,7 +510,7 @@ resource "aws_cloudwatch_metric_alarm" "cpu_scale_down" {
 # Scale Up Policy
 resource "aws_autoscaling_policy" "scale_up" {
   name                   = "scale_up"
-  scaling_adjustment     = 1 # Increment by 1 instance
+  scaling_adjustment     = 1 
   adjustment_type        = "ChangeInCapacity"
   cooldown               = 60
   autoscaling_group_name = aws_autoscaling_group.web_app_asg.name
@@ -519,7 +519,7 @@ resource "aws_autoscaling_policy" "scale_up" {
 # Scale Down Policy
 resource "aws_autoscaling_policy" "scale_down" {
   name                   = "scale_down"
-  scaling_adjustment     = -1 # Decrement by 1 instance
+  scaling_adjustment     = -1 
   adjustment_type        = "ChangeInCapacity"
   cooldown               = 60
   autoscaling_group_name = aws_autoscaling_group.web_app_asg.name
