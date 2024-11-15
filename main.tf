@@ -53,8 +53,21 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
+resource "aws_eip" "nat_eip" {
+  domain = "vpc"
+}
+
+resource "aws_nat_gateway" "nat" {
+  allocation_id = aws_eip.nat_eip.id
+  subnet_id     = aws_subnet.public[0].id
+}
+
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.main.id
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.nat.id
+  }
 
   tags = {
     Name = "${var.environment}-${var.vpc_name}-private-route"
@@ -228,69 +241,6 @@ resource "aws_iam_instance_profile" "cloudwatch_agent_instance_profile" {
 }
 
 
-# resource "aws_instance" "Webapp_Instance" {
-#   ami                     = var.ami_id
-#   instance_type           = var.instance_type
-#   key_name                = var.key_name
-#   vpc_security_group_ids  = [aws_security_group.app_sg.id]
-#   subnet_id               = aws_subnet.public[0].id
-#   disable_api_termination = false
-#   iam_instance_profile    = aws_iam_instance_profile.cloudwatch_agent_instance_profile.name
-
-#   root_block_device {
-#     volume_size           = 25
-#     volume_type           = "gp2"
-#     delete_on_termination = true
-#   }
-
-#   ebs_optimized = true
-#   user_data     = <<-EOF
-#     #!/bin/bash
-#     set -e
-
-#     # Database and S3 configuration
-#     DB_HOST="${aws_db_instance.db_instance.address}"
-#     DB_PORT="5432"
-#     DB_NAME="${var.database_name}"
-#     DB_USERNAME="${var.database_username}"
-#     DB_PASSWORD="${var.database_password}"
-#     S3_BUCKET_NAME="${aws_s3_bucket.web-bucket.bucket}"
-#     AWS_REGION="${var.aws_region}"
-#     SENDGRID_API_KEY="${var.SENDGRID_API_KEY}"
-
-#     # Create .env file for the application
-#     cat > /home/csye6225/app/.env <<EOL
-#     PORT=8082
-#     DB_HOST=$DB_HOST
-#     DB_PORT=$DB_PORT
-#     DB_NAME=$DB_NAME
-#     DB_USERNAME=$DB_USERNAME
-#     DB_PASSWORD=$DB_PASSWORD
-#     S3_BUCKET_NAME=$S3_BUCKET_NAME
-#     AWS_REGION=$AWS_REGION
-#     SENDGRID_API_KEY=$SENDGRID_API_KEY
-#     EOL
-
-#     chown csye6225:csye6225 /home/csye6225/app/.env
-#     chmod 600 /home/csye6225/app/.env
-
-#     # sudo mkdir -p /home/csye6225/app/logs
-#     # sudo chown -R csye6225:csye6225 /home/csye6225/app/logs
-
-
-#     sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
-
-#     sudo systemctl daemon-reload
-#     sudo systemctl restart webapp.service
-
-
-#     EOF
-
-#   tags = {
-#     Name = "${var.environment}-webapp-instance"
-#   }
-# }
-
 resource "aws_s3_bucket" "web-bucket" {
   bucket = random_uuid.web_bucket.result
   //acl           = "private"
@@ -337,17 +287,6 @@ data "aws_route53_zone" "cloudwebapp" {
   name         = "demo.cloudwebapp.me"
   private_zone = false
 }
-
-
-# resource "aws_route53_record" "demo_a_record" {
-#   zone_id = data.aws_route53_zone.cloudwebapp.zone_id
-#   name    = "demo.cloudwebapp.me"
-#   type    = "A"
-#   ttl     = 300
-#   records = [aws_instance.Webapp_Instance.public_ip]
-# }
-
-
 
 resource "aws_security_group" "load_balancer_sg" {
   name        = "Load Balancer sg"
@@ -416,6 +355,7 @@ resource "aws_launch_template" "web_app_template" {
     S3_BUCKET_NAME="${aws_s3_bucket.web-bucket.bucket}"
     AWS_REGION="${var.aws_region}"
     SENDGRID_API_KEY="${var.SENDGRID_API_KEY}"
+    SNS_TOPIC_ARN="${aws_sns_topic.user_verification.arn}"
 
     # Create .env file for the application
     cat > /home/csye6225/app/.env <<EOL
@@ -428,6 +368,7 @@ resource "aws_launch_template" "web_app_template" {
     S3_BUCKET_NAME=$S3_BUCKET_NAME
     AWS_REGION=$AWS_REGION
     SENDGRID_API_KEY=$SENDGRID_API_KEY
+    SNS_TOPIC_ARN=$SNS_TOPIC_ARN
     EOL
 
     chown csye6225:csye6225 /home/csye6225/app/.env
@@ -453,9 +394,9 @@ resource "aws_autoscaling_group" "web_app_asg" {
     version = "$Latest"
   }
 
-  min_size            = 3
-  max_size            = 5
-  desired_capacity    = 3
+  min_size            = 1
+  max_size            = 3
+  desired_capacity    = 1
   vpc_zone_identifier = aws_subnet.public[*].id
   target_group_arns   = [aws_lb_target_group.app_target_group.arn]
   tag {
@@ -575,6 +516,189 @@ resource "aws_route53_record" "alias" {
     evaluate_target_health = true
   }
 }
+
+resource "aws_sns_topic" "user_verification" {
+  name = "user-verification-topic"
+}
+
+resource "aws_lambda_function" "user_verification_lambda" {
+  function_name = "userVerificationFunction"
+  runtime       = "nodejs16.x"
+  handler       = "lamda_workspace/index.handler"
+  role          = aws_iam_role.lambda_exec_role.arn
+  filename      = var.lambda_code_path
+  vpc_config {
+    subnet_ids         = aws_subnet.private[*].id          # Your private subnets where RDS is located
+    security_group_ids = [aws_security_group.lambda_sg.id] # A security group allowing access to RDS
+  }
+
+  environment {
+    variables = {
+      DB_NAME          = var.database_name
+      DB_HOST          = aws_db_instance.db_instance.address
+      DB_USERNAME      = var.database_username
+      DB_PASSWORD      = var.database_password
+      SENDGRID_API_KEY = var.SENDGRID_API_KEY
+      WEB_APP_URL      = var.webapp_url
+    }
+  }
+
+  timeout     = 60
+  memory_size = 150
+}
+
+resource "aws_iam_role" "lambda_exec_role" {
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+        Effect = "Allow"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "lambda_policy" {
+  name = "LambdaSnsPolicy"
+  role = aws_iam_role.lambda_exec_role.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action   = "sns:Publish"
+        Resource = aws_sns_topic.user_verification.arn
+        Effect   = "Allow"
+      },
+      {
+        Action   = "ses:SendEmail"
+        Resource = "*"
+        Effect   = "Allow"
+      },
+      {
+        Action   = "rds-data:ExecuteStatement"
+        Resource = aws_db_instance.db_instance.arn # Use RDS cluster ARN here
+        Effect   = "Allow"
+      }
+    ]
+  })
+}
+
+# resource "aws_lambda_event_source_mapping" "sns_lambda_trigger" {
+#   event_source_arn = aws_sns_topic.user_verification.arn
+#   function_name    = aws_lambda_function.user_verification_lambda.arn
+#   enabled          = true
+# }
+resource "aws_sns_topic_subscription" "lambda" {
+  topic_arn = aws_sns_topic.user_verification.arn
+  protocol  = "lambda"
+  endpoint  = aws_lambda_function.user_verification_lambda.arn
+}
+
+resource "aws_lambda_permission" "with_sns" {
+  statement_id  = "AllowExecutionFromSNS"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.user_verification_lambda.function_name
+  principal     = "sns.amazonaws.com"
+  source_arn    = aws_sns_topic.user_verification.arn
+}
+
+resource "aws_iam_role" "sns_publish_role" {
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+        Effect = "Allow"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_policy" "sns_publish_policy" {
+  name        = "SNSPublishPolicy"
+  description = "Policy to publish messages to SNS topic"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action   = "sns:Publish"
+        Resource = aws_sns_topic.user_verification.arn # SNS Topic ARN
+        Effect   = "Allow"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_policy_attachment" "sns_publish_attachment" {
+  name       = "sns-policy-attachment"
+  roles      = [aws_iam_role.sns_publish_role.name]
+  policy_arn = aws_iam_policy.sns_publish_policy.arn
+}
+
+resource "aws_iam_policy_attachment" "sns_publish_attachment_1" {
+  name       = "sns-policy-attachment_1"
+  roles      = [aws_iam_role.cloudwatch_agent_role.name]
+  policy_arn = aws_iam_policy.sns_publish_policy.arn
+}
+resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
+  role       = aws_iam_role.lambda_exec_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_security_group" "lambda_sg" {
+  name        = "lambda-security-group"
+  description = "Security group for Lambda to access RDS"
+  vpc_id      = aws_vpc.main.id
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_security_group_rule" "rds_inbound_from_lambda" {
+  type                     = "ingress"
+  from_port                = 5432
+  to_port                  = 5432
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.database_sg.id # RDS Security Group
+  source_security_group_id = aws_security_group.lambda_sg.id   # Lambda Security Group
+}
+
+resource "aws_iam_role_policy" "lambda_network_access" {
+  name = "LambdaNetworkAccessPolicy"
+  role = aws_iam_role.lambda_exec_role.id
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "ec2:CreateNetworkInterface",
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:DeleteNetworkInterface"
+        ],
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+
+
+
+
+
 
 
 

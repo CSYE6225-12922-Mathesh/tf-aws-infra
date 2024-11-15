@@ -98,6 +98,18 @@ variable "up_threshold" {
   type        = string
   default     = "6.5"
 }
+
+variable "lambda_code_path" {
+  description = "Path to the Lambda code (zip file)"
+  type        = string
+  default     = "/Users/mathesh/lamda_workspace.zip" # Adjust to your local file path
+}
+
+variable "webapp_url" {
+  description = "URL of the webapp"
+  type        = string
+  default     = "http://demo.cloudwebapp.me:80"
+}
 #   description = "AWS Access Key for the production account"
 #   type        = string
 # }
