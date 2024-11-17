@@ -53,21 +53,9 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-resource "aws_eip" "nat_eip" {
-  domain = "vpc"
-}
-
-resource "aws_nat_gateway" "nat" {
-  allocation_id = aws_eip.nat_eip.id
-  subnet_id     = aws_subnet.public[0].id
-}
 
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.main.id
-  route {
-    cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.nat.id
-  }
 
   tags = {
     Name = "${var.environment}-${var.vpc_name}-private-route"
@@ -527,17 +515,9 @@ resource "aws_lambda_function" "user_verification_lambda" {
   handler       = "lamda_workspace/index.handler"
   role          = aws_iam_role.lambda_exec_role.arn
   filename      = var.lambda_code_path
-  vpc_config {
-    subnet_ids         = aws_subnet.private[*].id          # Your private subnets where RDS is located
-    security_group_ids = [aws_security_group.lambda_sg.id] # A security group allowing access to RDS
-  }
 
   environment {
     variables = {
-      DB_NAME          = var.database_name
-      DB_HOST          = aws_db_instance.db_instance.address
-      DB_USERNAME      = var.database_username
-      DB_PASSWORD      = var.database_password
       SENDGRID_API_KEY = var.SENDGRID_API_KEY
       WEB_APP_URL      = var.webapp_url
     }
@@ -576,11 +556,6 @@ resource "aws_iam_role_policy" "lambda_policy" {
       {
         Action   = "ses:SendEmail"
         Resource = "*"
-        Effect   = "Allow"
-      },
-      {
-        Action   = "rds-data:ExecuteStatement"
-        Resource = aws_db_instance.db_instance.arn # Use RDS cluster ARN here
         Effect   = "Allow"
       }
     ]
@@ -653,46 +628,6 @@ resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-resource "aws_security_group" "lambda_sg" {
-  name        = "lambda-security-group"
-  description = "Security group for Lambda to access RDS"
-  vpc_id      = aws_vpc.main.id
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-resource "aws_security_group_rule" "rds_inbound_from_lambda" {
-  type                     = "ingress"
-  from_port                = 5432
-  to_port                  = 5432
-  protocol                 = "tcp"
-  security_group_id        = aws_security_group.database_sg.id # RDS Security Group
-  source_security_group_id = aws_security_group.lambda_sg.id   # Lambda Security Group
-}
-
-resource "aws_iam_role_policy" "lambda_network_access" {
-  name = "LambdaNetworkAccessPolicy"
-  role = aws_iam_role.lambda_exec_role.id
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Action = [
-          "ec2:CreateNetworkInterface",
-          "ec2:DescribeNetworkInterfaces",
-          "ec2:DeleteNetworkInterface"
-        ],
-        Resource = "*"
-      }
-    ]
-  })
-}
 
 
 
