@@ -515,7 +515,7 @@ resource "aws_sns_topic" "user_verification" {
 resource "aws_lambda_function" "user_verification_lambda" {
   function_name = "userVerificationFunction"
   runtime       = "nodejs16.x"
-  handler       = "lamda_workspace/index.handler"
+  handler       = "serverless/index.handler"
   role          = aws_iam_role.lambda_exec_role.arn
   filename      = var.lambda_code_path
 
