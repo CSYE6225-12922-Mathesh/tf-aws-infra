@@ -102,7 +102,7 @@ variable "up_threshold" {
 variable "lambda_code_path" {
   description = "Path to the Lambda code (zip file)"
   type        = string
-  default     = "/Users/mathesh/lamda_workspace.zip" # Adjust to your local file path
+  default     = "/Users/mathesh/serverless.zip" # Adjust to your local file path
 }
 
 variable "webapp_url" {
