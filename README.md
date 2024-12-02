@@ -48,6 +48,31 @@ The Continuous Integration (CI) workflow for this project is implemented using G
 
 7. After successful validation, the workflow continues with additional steps.
 
+
+
 ## Conclusion
 
 With this setup, you can easily manage and provision AWS infrastructure using Terraform, ensuring a dynamic and reusable configuration. The CI integration helps maintain quality and consistency throughout your project.
+
+
+## Import SSL Certificate to AWS ACM
+
+To import your SSL certificate into AWS Certificate Manager (ACM), follow these steps:
+
+## Prerequisites
+Ensure that you have the certificate file (demo_cloudwebapp_me.crt) and private key file (demo_cloudwebapp_me.key) available.
+Make sure you have the AWS CLI installed and properly configured with your AWS credentials.
+Ensure you are using the correct AWS profile (demo in this case) for the import.
+Steps to Import the Certificate
+## Base64 Encode the Certificate and Private Key:
+You need to base64 encode both the certificate and the private key before importing them into ACM. Run the following command in your terminal:
+## Command
+AWS_PROFILE=demo aws acm import-certificate \
+    --certificate "$(base64 -i /Users/mathesh/demo_cloudwebapp_me.crt)" \
+    --private-key "$(base64 -i /Users/mathesh/demo_cloudwebapp_me.key)" \
+    --region us-east-1
+
+## Paths for Files:
+The demo_cloudwebapp_me.crt file should be located at /Users/mathesh/demo_cloudwebapp_me.crt.
+The demo_cloudwebapp_me.key file should be located at /Users/mathesh/demo_cloudwebapp_me.key.
+After running the command, the certificate will be imported into AWS ACM.
