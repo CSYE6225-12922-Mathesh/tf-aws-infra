@@ -77,10 +77,10 @@ variable "database_username" {
   type        = string
 }
 
-variable "database_password" {
-  description = "Password for the DB"
-  type        = string
-}
+# variable "database_password" {
+#   description = "Password for the DB"
+#   type        = string
+# }
 
 variable "SENDGRID_API_KEY" {
   description = "Sendgrid API Key"
@@ -110,18 +110,18 @@ variable "webapp_url" {
   type        = string
   default     = "http://demo.cloudwebapp.me:80"
 }
-#   description = "AWS Access Key for the production account"
-#   type        = string
-# }
 
-# variable "aws_access_key_demo" {
-#   description = "AWS Access Key for the demo account"
-#   type        = string
-# }
+variable "sendgrid_secret_name" {
+  description = "Name of the SendGrid API key secret"
+  type        = string
+  default     = "csye6225-sendgrid-api-key-3" # Default value (optional)
+}
+variable "db_password_secret_name" {
+  description = "Name of the database password secret"
+  type        = string
+  default     = "csye6225-db-password-3" # Optional: default value
+}
 
-# variable "aws_secret_access_key_demo" {
-#   description = "AWS Secret Key for the demo account"
-#   type        = string
-# }
+
 
 
